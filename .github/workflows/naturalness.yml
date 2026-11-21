@@ -1,0 +1,28 @@
+name: Naturalness dataset
+
+on:
+  pull_request:
+    paths: ["naturalness/**", ".github/workflows/naturalness.yml"]
+  push:
+    branches: [main]
+    paths: ["naturalness/**"]
+  workflow_dispatch:
+
+jobs:
+  validate-and-baseline:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: naturalness
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Validate dataset
+        run: python validate.py
+      - name: Run baselines
+        run: |
+          python baseline.py
+          cat results/baseline.md >> "$GITHUB_STEP_SUMMARY"
