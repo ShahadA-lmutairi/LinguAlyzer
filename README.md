@@ -132,4 +132,4 @@ LinguAlyzer/
 
 ## Author
 
-**Shahad**, translation and localization student, Saudi Arabia. Working at the intersection of Arabic linguistics, localization and NLP.
+**Shahad**, applied linguist (M.A. Applied Linguistics) working on Arabic NLP, localization and data. Trained in corpus linguistics (Lancaster University) and digital content localization (Middlebury Institute).
