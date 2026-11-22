@@ -50,7 +50,16 @@ The project has two parts:
 | **Script** | Share of Arabic letters, to catch untranslated text |
 | **Length** | Target/source length ratio outside the usual range |
 
-**Batch mode:** upload a CSV of source and target pairs, get a score and findings for every row, and download the results.
+**Batch mode:** upload a whole file, get a score and findings for every segment (most flagged first), and download the results as CSV. Supported formats:
+
+| Format | Extension | Notes |
+|---|---|---|
+| CSV | `.csv` | `source` and `target` columns (optional `id`) |
+| XLIFF 1.2 | `.xlf`, `.xliff` | `<trans-unit>`; skips `translate="no"`; keeps `state` and notes |
+| XLIFF 2.0 / 2.1 | `.xlf`, `.xliff` | `<unit>` → `<segment>`, one row per segment |
+| SDL Trados | `.sdlxliff` | Segments paired by `mid` from `<seg-source>` and `<target>` |
+
+Inline markup such as `<g id="1">` or `<x id="2"/>` is kept as a token, so a tag missing from the translation is flagged by the placeholder check, and it is ignored by the meaning, script, length and number checks. Untranslated segments are counted and skipped. Arabic-Indic digits (٠-٩) are matched with 0-9.
 
 ### Score
 
@@ -94,8 +103,13 @@ cd LinguAlyzer_Final_Polished
 pip install -r requirements.txt
 streamlit run app.py
 
+# Tests (no model download needed)
+cd ..
+pip install pytest
+pytest tests
+
 # Research baselines
-cd ../naturalness
+cd naturalness
 pip install -r requirements.txt
 python validate.py
 python baseline.py
@@ -107,7 +121,11 @@ python baseline.py
 LinguAlyzer/
 ├── LinguAlyzer_Final_Polished/   Streamlit web app
 │   ├── app.py
+│   ├── checks.py                 Rule-based checks
+│   ├── xliff.py                  XLIFF / SDLXLIFF reader
 │   └── requirements.txt
+├── examples/                     Sample XLIFF 1.2, 2.0 and SDLXLIFF files
+├── tests/                        Tests for the parser and checks
 ├── naturalness/                  Research: literal vs natural Arabic
 │   ├── data/pairs.csv            Dataset
 │   ├── GUIDELINES.md             Annotation guidelines

@@ -4,6 +4,10 @@ import pandas as pd
 import streamlit as st
 from sentence_transformers import SentenceTransformer, util
 
+import xliff
+from checks import (arabic_ratio, extract_numbers, extract_placeholders,
+                    length_ratio, strip_tags)
+
 st.set_page_config(
     page_title="LinguAlyzer",
     page_icon="🌍",
@@ -155,18 +159,8 @@ DEFAULT_GLOSSARY = {
     "save": "حفظ",
 }
 
-def arabic_ratio(text: str) -> float:
-    if not text.strip():
-        return 0.0
-    arabic_chars = len(re.findall(r"[\u0600-\u06FF]", text))
-    letters = len(re.findall(r"[A-Za-z\u0600-\u06FF]", text))
-    return arabic_chars / letters if letters else 0.0
-
-def length_ratio(source: str, target: str) -> float:
-    return len(target.strip()) / max(len(source.strip()), 1)
-
 def semantic_similarity(source: str, target: str) -> float:
-    emb = model.encode([source, target], convert_to_tensor=True, normalize_embeddings=True)
+    emb = model.encode([strip_tags(source), strip_tags(target)], convert_to_tensor=True, normalize_embeddings=True)
     score = util.cos_sim(emb[0], emb[1]).item()
     return max(0.0, min(1.0, score))
 
@@ -179,18 +173,8 @@ def terminology_score(source: str, target: str, glossary: dict):
     total = len(matched) + len(missed)
     return (1.0 if total == 0 else len(matched) / total), matched, missed
 
-def extract_placeholders(text):
-    patterns = [r"\{[^{}]+\}", r"%[sdif]", r"\$\{[^{}]+\}", r"<[^<>]+>"]
-    out = []
-    for p in patterns:
-        out.extend(re.findall(p, text))
-    return sorted(out)
-
 def consistency_score(source, target, extractor):
     return 1.0 if extractor(source) == extractor(target) else 0.0
-
-def extract_numbers(text):
-    return sorted(re.findall(r"\d+(?:[.,]\d+)?", text))
 
 def score_total(semantic, terminology, arabic, length, placeholders, numbers):
     length_component = 1.0 if 0.55 <= length <= 1.8 else 0.6
@@ -318,29 +302,69 @@ with tab1:
         s3.metric("Numbers", "Pass" if result["numbers"] else "Review")
 
 with tab2:
-    st.markdown("### Batch CSV Evaluation")
-    st.caption("Upload a CSV with `source` and `target` columns.")
-    uploaded = st.file_uploader("Upload CSV", type=["csv"])
+    st.markdown("### Batch Evaluation")
+    st.caption("Upload a CSV with `source` and `target` columns, or a translation file: "
+               "XLIFF 1.2 / 2.0 (`.xlf`, `.xliff`) or SDL Trados (`.sdlxliff`).")
+    uploaded = st.file_uploader("Upload file", type=["csv", "xlf", "xliff", "sdlxliff"])
     if uploaded:
-        df = pd.read_csv(uploaded)
-        if {"source","target"}.issubset(df.columns):
-            rows=[]
-            for _,row in df.iterrows():
-                r=analyze(str(row["source"]),str(row["target"]),DEFAULT_GLOSSARY)
+        name = uploaded.name.lower()
+        pairs = None
+        if name.endswith(".csv"):
+            df = pd.read_csv(uploaded)
+            if {"source", "target"}.issubset(df.columns):
+                pairs = pd.DataFrame({
+                    "id": df["id"] if "id" in df.columns else range(1, len(df) + 1),
+                    "source": df["source"].astype(str),
+                    "target": df["target"].fillna("").astype(str),
+                })
+            else:
+                st.error("CSV must contain `source` and `target` columns.")
+        else:
+            try:
+                units = xliff.parse(uploaded.getvalue())
+            except xliff.XliffError as exc:
+                st.error(str(exc))
+            else:
+                if units:
+                    pairs = pd.DataFrame([vars(u) for u in units])
+                else:
+                    st.warning("No translation units found in this file.")
+
+        if pairs is not None and len(pairs):
+            translated = pairs[pairs["target"].str.strip() != ""]
+            skipped = len(pairs) - len(translated)
+            k1, k2, k3 = st.columns(3)
+            k1.metric("Segments", len(pairs))
+            k2.metric("Analyzed", len(translated))
+            k3.metric("Untranslated (skipped)", skipped)
+
+            rows = []
+            progress = st.progress(0.0, text="Analyzing segments…")
+            for i, (_, row) in enumerate(translated.iterrows(), 1):
+                r = analyze(row["source"], row["target"], DEFAULT_GLOSSARY)
                 rows.append({
+                    "id": row["id"],
                     "source": row["source"],
                     "target": row["target"],
+                    "state": row.get("state", ""),
                     "overall_score": r["overall"],
-                    "semantic_similarity": round(r["semantic"],3),
-                    "terminology_score": round(r["terminology"],3),
-                    "issue_count": len(r["issues"])
+                    "semantic_similarity": round(r["semantic"], 3),
+                    "terminology_score": round(r["terminology"], 3),
+                    "issue_count": len(r["issues"]),
+                    "issues": "; ".join(f"{c}: {m}" for c, m in r["issues"]),
                 })
-            out=pd.DataFrame(rows)
-            st.dataframe(out, use_container_width=True)
-            st.download_button("Download Results", out.to_csv(index=False).encode("utf-8-sig"),
-                               "localization_results.csv","text/csv")
-        else:
-            st.error("CSV must contain `source` and `target` columns.")
+                progress.progress(i / len(translated), text=f"Analyzing segments… {i}/{len(translated)}")
+            progress.empty()
+
+            if rows:
+                out = pd.DataFrame(rows).sort_values(["issue_count", "overall_score"], ascending=[False, True])
+                out = out[["id", "issue_count", "issues", "overall_score", "source", "target", "state",
+                           "semantic_similarity", "terminology_score"]]
+                flagged = int((out["issue_count"] > 0).sum())
+                st.markdown(f"**{flagged} of {len(out)} segments have at least one flag.** Most flagged first.")
+                st.dataframe(out, use_container_width=True, hide_index=True)
+                st.download_button("Download Results (CSV)", out.to_csv(index=False).encode("utf-8-sig"),
+                                   "localization_results.csv", "text/csv")
 
 with tab3:
     st.markdown("""
@@ -354,6 +378,9 @@ with tab3:
     - Numeric consistency
     - Arabic-script ratio
     - Length-ratio heuristic
+
+    **Files**
+    - CSV, XLIFF 1.2 / 2.0 and SDL Trados `.sdlxliff`
 
     **Positioning**
     Human-in-the-loop language quality support — not a replacement for professional linguists.

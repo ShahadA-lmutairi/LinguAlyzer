@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<xliff version="2.0" xmlns="urn:oasis:names:tc:xliff:document:2.0" srcLang="en" trgLang="ar">
+  <file id="f1">
+    <unit id="u1">
+      <notes><note>Shown on the sign-in screen.</note></notes>
+      <segment state="translated">
+        <source>Sign in to continue.</source>
+        <target>سجّل الدخول للمتابعة.</target>
+      </segment>
+    </unit>
+    <unit id="u2">
+      <segment id="s1" state="translated">
+        <source>Your order <pc id="1">#4821</pc> has been cancelled.</source>
+        <target>أُلغي طلبك <pc id="1">#4821</pc>.</target>
+      </segment>
+      <segment id="s2" state="initial">
+        <source>Contact support for help.</source>
+        <target></target>
+      </segment>
+    </unit>
+  </file>
+</xliff>
