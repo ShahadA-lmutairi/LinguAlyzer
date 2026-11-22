@@ -1,0 +1,21 @@
+name: Web app tests
+
+on:
+  pull_request:
+    paths: ["LinguAlyzer_Final_Polished/**", "tests/**", "examples/**", ".github/workflows/web-tests.yml"]
+  push:
+    branches: [main]
+    paths: ["LinguAlyzer_Final_Polished/**", "tests/**", "examples/**"]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pytest
+      - name: XLIFF parser and rule-based checks
+        run: pytest -v tests
