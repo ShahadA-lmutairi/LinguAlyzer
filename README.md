@@ -14,7 +14,8 @@ Arabic localization quality analysis with multilingual NLP, and a research datas
 
 [Live demo](https://lingualyzer-j46qnmpej563zcfh79exbv.streamlit.app) ·
 [Research: translation naturalness](naturalness) ·
-[iOS app](https://github.com/ShahadA-lmutairi/LinguAlyzer-iOS)
+[iOS app](https://github.com/ShahadA-lmutairi/LinguAlyzer-iOS) ·
+[UX/UI case study](https://shahada-lmutairi.github.io/LinguAlyzer-iOS/)
 
 </div>
 
@@ -139,6 +140,7 @@ LinguAlyzer/
 ## Related
 
 - **[LinguAlyzer for iOS](https://github.com/ShahadA-lmutairi/LinguAlyzer-iOS)**: the same review workflow as a native SwiftUI app for iPhone and iPad, with on-device Arabic NLP using Apple's NaturalLanguage framework.
+- **[UX/UI case study](https://shahada-lmutairi.github.io/LinguAlyzer-iOS/)**: how the app was designed: problem, users, principles, key decisions and iterations.
 
 ## Roadmap
 
